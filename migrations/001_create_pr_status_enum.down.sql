@@ -1,0 +1,1 @@
+DROP TYPE pr_status;
