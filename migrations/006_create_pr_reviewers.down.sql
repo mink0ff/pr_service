@@ -1,1 +1,0 @@
-DROP TABLE pr_reviewers;
