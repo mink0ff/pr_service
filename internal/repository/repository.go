@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	_ "context"
 
 	"github.com/mink0ff/pr_service/internal/models"
 )

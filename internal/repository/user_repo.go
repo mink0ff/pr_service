@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+
 	"github.com/mink0ff/pr_service/internal/models"
 	"gorm.io/gorm"
 )
