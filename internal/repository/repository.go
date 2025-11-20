@@ -2,30 +2,32 @@ package repository
 
 import (
 	"context"
+	_ "context"
+
 	"github.com/mink0ff/pr_service/internal/models"
 )
 
 type UserRepository interface {
-	Create() (int, error)
-	GetByID() (*models.User, error)
-	ListActiveByTeam() ([]models.User, error)
-	Update() error
+	Create(ctx context.Context, user models.User) (int, error)
+	GetByID(ctx context.Context, id int) (*models.User, error)
+	ListActiveByTeam(ctx context.Context, teamID int) ([]models.User, error)
+	Update(ctx context.Context, user models.User) error
 }
 
 type TeamRepository interface {
-	Create() (int, error)
-	GetByID() (models.Team, error)
-	AddUser() error
-	RemoveUser() error
-	ListUser() ([]models.User, error)
+	Create(ctx context.Context) (int, error)
+	GetByID(ctx context.Context) (models.Team, error)
+	AddUser(ctx context.Context) error
+	RemoveUser(ctx context.Context) error
+	ListUser(ctx context.Context) ([]models.User, error)
 }
 
 type PullRequestRepository interface {
-	Create() (int, error)
-	GetByID() (*models.PullRequest, error)
-	Update() error
-	AddReviewer() error
-	RemoveReviewer() error
-	ListReviewers() ([]models.User, error)
-	ListByReviewer() ([]models.PullRequest, error)
+	Create(ctx context.Context) (int, error)
+	GetByID(ctx context.Context) (*models.PullRequest, error)
+	Update(ctx context.Context) error
+	AddReviewer(ctx context.Context) error
+	RemoveReviewer(ctx context.Context) error
+	ListReviewers(ctx context.Context) ([]models.User, error)
+	ListByReviewer(ctx context.Context) ([]models.PullRequest, error)
 }
