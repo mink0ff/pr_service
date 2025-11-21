@@ -1,11 +1,8 @@
 package models
 
-type Team struct {
-	ID   int
-	Name string
-}
+import "github.com/google/uuid"
 
-type TeamUser struct {
-	TeamID int
-	UserID int
+type Team struct {
+	TeamID   uuid.UUID `db:"team_id"`
+	TeamName string    `db:"team_name"`
 }
