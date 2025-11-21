@@ -12,11 +12,13 @@ type UserRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*models.User, error)
 	ListActiveByTeam(ctx context.Context, teamID uuid.UUID) ([]models.User, error)
 	Update(ctx context.Context, user models.User) error
+	ListReviewPRs(ctx context.Context, userID uuid.UUID) ([]models.PullRequest, error)
 }
 
 type TeamRepository interface {
 	Create(ctx context.Context, team models.Team) error
 	GetByID(ctx context.Context, teamID uuid.UUID) (*models.Team, error)
+	GetByName(ctx context.Context, teamName string) (*models.Team, error)
 
 	AddUser(ctx context.Context, teamID uuid.UUID, userID uuid.UUID) error
 	RemoveUser(ctx context.Context, teamID uuid.UUID, userID uuid.UUID) error
