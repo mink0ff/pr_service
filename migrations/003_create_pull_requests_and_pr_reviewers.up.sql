@@ -12,7 +12,7 @@ CREATE TABLE pr_reviewers (
     reviewer_id     TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
 
     PRIMARY KEY (pull_request_id, reviewer_id)
-    );
+);
 
 CREATE INDEX idx_pr_reviewers_reviewer_id
 ON pr_reviewers (reviewer_id);
