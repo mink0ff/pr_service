@@ -32,6 +32,17 @@ func (r *TeamRepo) GetByID(ctx context.Context, teamID uuid.UUID) (*models.Team,
 	return &team, err
 }
 
+func (r *TeamRepo) GetByName(ctx context.Context, teamName string) (*models.Team, error) {
+	var team models.Team
+	err := r.db.WithContext(ctx).First(&team, "name = ?", teamName).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+
+	return &team, err
+}
+
 func (r *TeamRepo) AddUser(ctx context.Context, teamID uuid.UUID, userID uuid.UUID) error {
 	tm := models.TeamMember{
 		TeamID: teamID,

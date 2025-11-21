@@ -46,3 +46,13 @@ func (r *UserRepo) ListActiveByTeam(ctx context.Context, teamID uuid.UUID) ([]mo
 
 	return users, err
 }
+
+func (r *UserRepo) ListReviewPRs(ctx context.Context, userID uuid.UUID) ([]models.PullRequest, error) {
+	var PullRequest []models.PullRequest
+	err := r.db.WithContext(ctx).
+		Joins("JOIN pr_reviewers pr ON pr.pull_request_id = pull_requests.pull_request_id").
+		Where("pr.reviewer_id = ?", userID).
+		Find(&PullRequest).Error
+
+	return PullRequest, err
+}
