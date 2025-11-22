@@ -32,9 +32,11 @@ func main() {
 	teamRepo := repository.NewTeamRepo(db)
 	prRepo := repository.NewPrRepo(db)
 
+	txManager := repository.NewTransactionManager(db)
+
 	userService := service.NewUserService(userRepo)
 	teamService := service.NewTeamService(teamRepo, userRepo)
-	prService := service.NewPRService(prRepo, userRepo, teamRepo)
+	prService := service.NewPRService(txManager, prRepo, userRepo, teamRepo)
 
 	r := chi.NewRouter()
 	handler.RegisterRoutes(r, teamService, userService, prService)

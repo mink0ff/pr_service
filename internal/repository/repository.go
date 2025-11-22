@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mink0ff/pr_service/internal/models"
+	"gorm.io/gorm"
 )
 
 type UserRepository interface {
@@ -13,6 +14,7 @@ type UserRepository interface {
 	ListActiveByTeam(ctx context.Context, teamID uuid.UUID) ([]models.User, error)
 	Update(ctx context.Context, user models.User) error
 	ListReviewPRs(ctx context.Context, userID string) ([]models.PullRequest, error)
+	WithTx(tx *gorm.DB) UserRepository
 }
 
 type TeamRepository interface {
@@ -24,6 +26,7 @@ type TeamRepository interface {
 	RemoveUser(ctx context.Context, teamID uuid.UUID, userID string) error
 
 	ListUsersByTeam(ctx context.Context, teamID uuid.UUID) ([]models.User, error)
+	WithTx(tx *gorm.DB) TeamRepository
 }
 
 type PullRequestRepository interface {
@@ -36,4 +39,5 @@ type PullRequestRepository interface {
 
 	ListReviewers(ctx context.Context, prID string) ([]models.User, error)
 	ListByReviewer(ctx context.Context, reviewerID string) ([]models.PullRequest, error)
+	WithTx(tx *gorm.DB) PullRequestRepository
 }

@@ -61,3 +61,7 @@ func (r *TeamRepo) ListUsersByTeam(ctx context.Context, teamID uuid.UUID) ([]mod
 	}
 	return users, err
 }
+
+func (r *TeamRepo) WithTx(tx *gorm.DB) TeamRepository {
+	return &TeamRepo{db: tx}
+}

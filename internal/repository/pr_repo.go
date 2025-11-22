@@ -6,6 +6,7 @@ import (
 
 	"github.com/mink0ff/pr_service/internal/models"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type PrRepo struct {
@@ -22,7 +23,9 @@ func (r *PrRepo) Create(ctx context.Context, pr models.PullRequest) error {
 
 func (r *PrRepo) GetByID(ctx context.Context, id string) (*models.PullRequest, error) {
 	var pr models.PullRequest
-	err := r.db.WithContext(ctx).First(&pr, "pull_request_id = ?", id).Error
+	err := r.db.WithContext(ctx).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		First(&pr, "pull_request_id = ?", id).Error
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
@@ -66,4 +69,8 @@ func (r *PrRepo) ListByReviewer(ctx context.Context, reviewerID string) ([]model
 		Find(&prs).Error
 
 	return prs, err
+}
+
+func (r *PrRepo) WithTx(tx *gorm.DB) PullRequestRepository {
+	return &PrRepo{db: tx}
 }

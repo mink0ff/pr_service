@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mink0ff/pr_service/internal/models"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type UserRepo struct {
@@ -38,11 +39,10 @@ func (r *UserRepo) Update(ctx context.Context, user models.User) error {
 
 func (r *UserRepo) ListActiveByTeam(ctx context.Context, teamID uuid.UUID) ([]models.User, error) {
 	var users []models.User
-
 	err := r.db.WithContext(ctx).
 		Where("team_id = ? AND is_active = TRUE", teamID).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
 		Find(&users).Error
-
 	return users, err
 }
 
@@ -54,4 +54,8 @@ func (r *UserRepo) ListReviewPRs(ctx context.Context, userID string) ([]models.P
 		Find(&PullRequest).Error
 
 	return PullRequest, err
+}
+
+func (r *UserRepo) WithTx(tx *gorm.DB) UserRepository {
+	return &UserRepo{db: tx}
 }
