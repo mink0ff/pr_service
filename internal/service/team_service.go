@@ -19,52 +19,100 @@ func NewTeamService(teamRepo repository.TeamRepository, userRepo repository.User
 	return &TeamService{teamRepo: teamRepo, userRepo: userRepo}
 }
 
-func (s *TeamService) CreateTeam(ctx context.Context, req dto.CreateTeamRequest) (*models.Team, error) {
-	teamID := uuid.New()
+func (s *TeamService) CreateTeam(ctx context.Context, req *dto.CreateTeamRequest) (*dto.CreateTeamResponse, error) {
+	// Проверка, существует ли команда
+	existingTeam, err := s.teamRepo.GetByName(ctx, req.TeamName)
+	if err != nil {
+		log.Printf("team repo error: %v", err)
+		return nil, err
+	}
+	if existingTeam != nil {
+		return nil, ErrTeamExists
+	}
 
+	teamID := uuid.New()
 	team := models.Team{
 		TeamID:   teamID,
 		TeamName: req.TeamName,
 	}
 
-	err := s.teamRepo.Create(ctx, team)
-	if err != nil {
+	if err := s.teamRepo.Create(ctx, team); err != nil {
 		log.Printf("team create error: %v", err)
-		return nil, ErrTeamExists
+		return nil, err
 	}
 
-	for _, m := range req.Members {
-		user := models.User{
-			UserID:   m.UserID,
-			Username: m.Username,
-			TeamID:   team.TeamID,
-			IsActive: m.IsActive,
+	// Добавляем участников
+	for _, member := range req.Members {
+		userID, err := uuid.Parse(member.UserID)
+		if err != nil {
+			log.Printf("invalid user_id %s: %v", member.UserID, err)
+			return nil, err
 		}
 
-		err := s.userRepo.Create(ctx, user)
+		existingUser, err := s.userRepo.GetByID(ctx, userID)
 		if err != nil {
-			if err := s.userRepo.Update(ctx, user); err != nil {
-				log.Printf("team member update error: %v", err)
+			log.Printf("user repo error: %v", err)
+			return nil, err
+		}
+
+		if existingUser == nil {
+			// создаём нового пользователя
+			user := models.User{
+				UserID:   userID,
+				Username: member.Username,
+				TeamID:   teamID,
+				IsActive: member.IsActive,
+			}
+			if err := s.userRepo.Create(ctx, user); err != nil {
+				log.Printf("create user error: %v", err)
+				return nil, err
+			}
+		} else {
+			// обновляем существующего пользователя
+			existingUser.Username = member.Username
+			existingUser.IsActive = member.IsActive
+			existingUser.TeamID = teamID
+			if err := s.userRepo.Update(ctx, *existingUser); err != nil {
+				log.Printf("update user error: %v", err)
 				return nil, err
 			}
 		}
 
-		_ = s.teamRepo.AddUser(ctx, team.TeamID, user.UserID)
+		// связываем пользователя с командой (если нужно)
+		if err := s.teamRepo.AddUser(ctx, teamID, userID); err != nil {
+			log.Printf("add user to team error: %v", err)
+			return nil, err
+		}
 	}
 
-	return &team, nil
+	resp := &dto.CreateTeamResponse{
+		Team: *req,
+	}
+	return resp, nil
 }
 
-func (s *TeamService) GetTeam(ctx context.Context, name string) (*models.Team, []models.User, error) {
-	team, err := s.teamRepo.GetByName(ctx, name)
+func (s *TeamService) GetTeam(ctx context.Context, teamName string) (*dto.Team, error) {
+	team, err := s.teamRepo.GetByName(ctx, teamName)
 	if err != nil || team == nil {
-		return nil, nil, ErrTeamNotFound
+		return nil, ErrTeamNotFound
 	}
 
-	users, err := s.teamRepo.ListUser(ctx, team.TeamID)
+	users, err := s.teamRepo.ListUsersByTeam(ctx, team.TeamID)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return team, users, nil
+	members := make([]dto.TeamMember, len(users))
+	for i, u := range users {
+		members[i] = dto.TeamMember{
+			UserID:   u.UserID.String(),
+			Username: u.Username,
+			IsActive: u.IsActive,
+		}
+	}
+
+	return &dto.Team{
+		TeamName: team.TeamName,
+		Members:  members,
+	}, nil
 }
