@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS pull_requests(
     merged_at         TIMESTAMPTZ
 );
 
-CREATE TABLE pr_reviewers (
+CREATE TABLE IF NOT EXISTS pr_reviewers (
     pull_request_id TEXT NOT NULL REFERENCES pull_requests(pull_request_id) ON DELETE CASCADE,
     reviewer_id     TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
 
