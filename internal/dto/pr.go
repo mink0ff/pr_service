@@ -1,19 +1,55 @@
 package dto
 
-type CreatePRRequest struct {
-	Title    string `json:"title" binding:"required"`
-	AuthorID int    `json:"authorId" binding:"required"`
+import "time"
+
+type PRStatus string
+
+const (
+	PRStatusOpen   PRStatus = "OPEN"
+	PRStatusMerged PRStatus = "MERGED"
+)
+
+type PullRequestDTO struct {
+	PullRequestID     string     `json:"pull_request_id"`
+	PullRequestName   string     `json:"pull_request_name"`
+	AuthorID          string     `json:"author_id"`
+	Status            PRStatus   `json:"status"`
+	AssignedReviewers []string   `json:"assigned_reviewers"`
+	CreatedAt         *time.Time `json:"createdAt,omitempty"`
+	MergedAt          *time.Time `json:"mergedAt,omitempty"`
 }
 
-type PRResponse struct {
-	ID        int            `json:"id"`
-	Title     string         `json:"title"`
-	AuthorID  int            `json:"authorId"`
-	TeamID    int            `json:"teamId"`
-	Status    string         `json:"status"`
-	Reviewers []UserResponse `json:"reviewers"`
+type PullRequestShortDTO struct {
+	PullRequestID   string   `json:"pull_request_id"`
+	PullRequestName string   `json:"pull_request_name"`
+	AuthorID        string   `json:"author_id"`
+	Status          PRStatus `json:"status"`
+}
+
+type CreatePRRequest struct {
+	PullRequestID   string `json:"pull_request_id"`
+	PullRequestName string `json:"pull_request_name"`
+	AuthorID        string `json:"author_id"`
+}
+
+type CreatePRResponse struct {
+	PR PullRequestDTO `json:"pr"`
+}
+
+type MergePRRequest struct {
+	PullRequestID string `json:"pull_request_id"`
+}
+
+type MergePRResponse struct {
+	PR PullRequestDTO `json:"pr"`
 }
 
 type ReassignReviewerRequest struct {
-	ReviewerID int `json:"reviewerId" binding:"required"`
+	PullRequestID string `json:"pull_request_id"`
+	OldUserID     string `json:"old_user_id"`
+}
+
+type ReassignReviewerResponse struct {
+	PR         PullRequestDTO `json:"pr"`
+	ReplacedBy string         `json:"replaced_by"`
 }
