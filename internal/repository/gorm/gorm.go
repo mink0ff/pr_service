@@ -1,9 +1,10 @@
-package gormrepo
+package gorm
 
 import (
+	"time"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"time"
 )
 
 type GormConfig struct {
