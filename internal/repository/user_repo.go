@@ -40,8 +40,7 @@ func (r *UserRepo) ListActiveByTeam(ctx context.Context, teamID uuid.UUID) ([]mo
 	var users []models.User
 
 	err := r.db.WithContext(ctx).
-		Joins("JOIN team_members tm ON tm.user_id = users.user_id").
-		Where("tm.team_id = ? AND users.is_active = TRUE", teamID).
+		Where("team_id = ? AND is_active = TRUE", teamID).
 		Find(&users).Error
 
 	return users, err

@@ -51,12 +51,10 @@ func (r *PrRepo) RemoveReviewer(ctx context.Context, prID uuid.UUID, reviewerID 
 
 func (r *PrRepo) ListReviewers(ctx context.Context, prID uuid.UUID) ([]models.User, error) {
 	var users []models.User
-
 	err := r.db.WithContext(ctx).
 		Joins("JOIN pr_reviewers prr ON prr.reviewer_id = users.user_id").
 		Where("prr.pull_request_id = ?", prID).
 		Find(&users).Error
-
 	return users, err
 }
 

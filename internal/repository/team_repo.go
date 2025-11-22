@@ -23,7 +23,9 @@ func (r *TeamRepo) Create(ctx context.Context, team models.Team) error {
 
 func (r *TeamRepo) GetByID(ctx context.Context, teamID uuid.UUID) (*models.Team, error) {
 	var team models.Team
-	err := r.db.WithContext(ctx).First(&team, "team_id = ?", teamID).Error
+	err := r.db.WithContext(ctx).
+		First(&team, "team_id = ?", teamID).
+		Error
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
@@ -34,7 +36,9 @@ func (r *TeamRepo) GetByID(ctx context.Context, teamID uuid.UUID) (*models.Team,
 
 func (r *TeamRepo) GetByName(ctx context.Context, teamName string) (*models.Team, error) {
 	var team models.Team
-	err := r.db.WithContext(ctx).First(&team, "name = ?", teamName).Error
+	err := r.db.WithContext(ctx).
+		First(&team, "team_name = ?", teamName).
+		Error
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
@@ -43,27 +47,17 @@ func (r *TeamRepo) GetByName(ctx context.Context, teamName string) (*models.Team
 	return &team, err
 }
 
-func (r *TeamRepo) AddUser(ctx context.Context, teamID uuid.UUID, userID uuid.UUID) error {
-	tm := models.TeamMember{
-		TeamID: teamID,
-		UserID: userID,
-	}
-	return r.db.WithContext(ctx).Create(&tm).Error
-}
-
-func (r *TeamRepo) RemoveUser(ctx context.Context, teamID uuid.UUID, userID uuid.UUID) error {
-	return r.db.WithContext(ctx).
-		Where("team_id = ? AND user_id = ?", teamID, userID).
-		Delete(&models.TeamMember{}).Error
-}
-
-func (r *TeamRepo) ListUser(ctx context.Context, teamID uuid.UUID) ([]models.User, error) {
+func (r *TeamRepo) ListUsersByTeam(ctx context.Context, teamID uuid.UUID) ([]models.User, error) {
 	var users []models.User
 
 	err := r.db.WithContext(ctx).
-		Joins("JOIN team_members tm ON tm.user_id = users.user_id").
-		Where("tm.team_id = ?", teamID).
-		Find(&users).Error
+		Where("team_id = ?", teamID).
+		Find(&users).
+		Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return []models.User{}, nil
+	}
 
 	return users, err
 }
