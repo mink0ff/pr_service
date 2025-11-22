@@ -23,7 +23,7 @@ type TeamRepository interface {
 	AddUser(ctx context.Context, teamID uuid.UUID, userID uuid.UUID) error
 	RemoveUser(ctx context.Context, teamID uuid.UUID, userID uuid.UUID) error
 
-	ListUser(ctx context.Context, teamID uuid.UUID) ([]models.User, error)
+	ListUsersByTeam(ctx context.Context, teamID uuid.UUID) ([]models.User, error)
 }
 
 type PullRequestRepository interface {
