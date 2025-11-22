@@ -39,13 +39,13 @@ func (r *TeamRepo) GetByName(ctx context.Context, teamName string) (*models.Team
 	return &team, err
 }
 
-func (r *TeamRepo) AddUser(ctx context.Context, teamID uuid.UUID, userID uuid.UUID) error {
+func (r *TeamRepo) AddUser(ctx context.Context, teamID uuid.UUID, userID string) error {
 	return r.db.WithContext(ctx).Model(&models.User{}).
 		Where("user_id = ?", userID).
 		Update("team_id", teamID).Error
 }
 
-func (r *TeamRepo) RemoveUser(ctx context.Context, teamID uuid.UUID, userID uuid.UUID) error {
+func (r *TeamRepo) RemoveUser(ctx context.Context, teamID uuid.UUID, userID string) error {
 	return r.db.WithContext(ctx).Model(&models.User{}).
 		Where("user_id = ? AND team_id = ?", userID, teamID).
 		Update("team_id", nil).Error

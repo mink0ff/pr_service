@@ -21,7 +21,7 @@ func (r *UserRepo) Create(ctx context.Context, user models.User) error {
 	return r.db.WithContext(ctx).Create(&user).Error
 }
 
-func (r *UserRepo) GetByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
+func (r *UserRepo) GetByID(ctx context.Context, id string) (*models.User, error) {
 	var user models.User
 
 	err := r.db.WithContext(ctx).First(&user, "user_id = ?", id).Error
@@ -46,7 +46,7 @@ func (r *UserRepo) ListActiveByTeam(ctx context.Context, teamID uuid.UUID) ([]mo
 	return users, err
 }
 
-func (r *UserRepo) ListReviewPRs(ctx context.Context, userID uuid.UUID) ([]models.PullRequest, error) {
+func (r *UserRepo) ListReviewPRs(ctx context.Context, userID string) ([]models.PullRequest, error) {
 	var PullRequest []models.PullRequest
 	err := r.db.WithContext(ctx).
 		Joins("JOIN pr_reviewers pr ON pr.pull_request_id = pull_requests.pull_request_id").

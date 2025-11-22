@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 
-	"github.com/google/uuid"
 	"github.com/mink0ff/pr_service/internal/dto"
 	"github.com/mink0ff/pr_service/internal/models"
 	"github.com/mink0ff/pr_service/internal/repository"
@@ -19,9 +18,8 @@ func NewUserService(repo repository.UserRepository) *UserService {
 }
 
 func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest) (*models.User, error) {
-	userID := uuid.New()
 	user := models.User{
-		UserID:   userID,
+		UserID:   req.UserID,
 		Username: req.Name,
 		TeamID:   req.TeamID,
 		IsActive: req.IsActive,
@@ -53,6 +51,6 @@ func (s *UserService) SetActive(ctx context.Context, req dto.SetUserActiveReques
 	return user, nil
 }
 
-func (s *UserService) GetReviewPRs(ctx context.Context, userID uuid.UUID) ([]models.PullRequest, error) {
+func (s *UserService) GetReviewPRs(ctx context.Context, userID string) ([]models.PullRequest, error) {
 	return s.userRepo.ListReviewPRs(ctx, userID)
 }

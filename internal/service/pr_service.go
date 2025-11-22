@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/mink0ff/pr_service/internal/dto"
 	"github.com/mink0ff/pr_service/internal/models"
 	"github.com/mink0ff/pr_service/internal/repository"
@@ -28,7 +27,7 @@ func NewPRService(prRepo repository.PullRequestRepository, userRepo repository.U
 }
 
 func (s *PRService) CreatePR(ctx context.Context, req *dto.CreatePRRequest) (*dto.CreatePRResponse, error) {
-	existing, err := s.prRepo.GetByID(ctx, uuid.MustParse(req.PullRequestID))
+	existing, err := s.prRepo.GetByID(ctx, req.PullRequestID)
 	if err != nil {
 		return nil, err
 	}
@@ -36,16 +35,15 @@ func (s *PRService) CreatePR(ctx context.Context, req *dto.CreatePRRequest) (*dt
 		return nil, ErrPRExists
 	}
 
-	authorID := uuid.MustParse(req.AuthorID)
-	author, err := s.userRepo.GetByID(ctx, authorID)
+	author, err := s.userRepo.GetByID(ctx, req.AuthorID)
 	if err != nil || author == nil {
 		return nil, ErrUserNotFound
 	}
 
 	pr := models.PullRequest{
-		PullRequestID:   uuid.MustParse(req.PullRequestID),
+		PullRequestID:   req.PullRequestID,
 		PullRequestName: req.PullRequestName,
-		AuthorID:        authorID,
+		AuthorID:        req.AuthorID,
 		Status:          models.PROpen,
 		CreatedAt:       time.Now(),
 	}
@@ -59,9 +57,9 @@ func (s *PRService) CreatePR(ctx context.Context, req *dto.CreatePRRequest) (*dt
 		return nil, err
 	}
 
-	var reviewers []uuid.UUID
+	var reviewers []string
 	for _, u := range users {
-		if u.UserID != authorID {
+		if u.UserID != req.AuthorID {
 			reviewers = append(reviewers, u.UserID)
 		}
 	}
@@ -83,14 +81,14 @@ func (s *PRService) CreatePR(ctx context.Context, req *dto.CreatePRRequest) (*dt
 
 	assignedStr := make([]string, len(assigned))
 	for i, r := range assigned {
-		assignedStr[i] = r.String()
+		assignedStr[i] = r
 	}
 
 	resp := &dto.CreatePRResponse{
 		PR: dto.PullRequestDTO{
-			PullRequestID:     pr.PullRequestID.String(),
+			PullRequestID:     pr.PullRequestID,
 			PullRequestName:   pr.PullRequestName,
-			AuthorID:          pr.AuthorID.String(),
+			AuthorID:          pr.AuthorID,
 			Status:            dto.PRStatusOpen,
 			AssignedReviewers: assignedStr,
 			CreatedAt:         &pr.CreatedAt,
@@ -100,14 +98,13 @@ func (s *PRService) CreatePR(ctx context.Context, req *dto.CreatePRRequest) (*dt
 }
 
 func (s *PRService) MergePR(ctx context.Context, req *dto.MergePRRequest) (*dto.MergePRResponse, error) {
-	prID := uuid.MustParse(req.PullRequestID)
-	pr, err := s.prRepo.GetByID(ctx, prID)
+	pr, err := s.prRepo.GetByID(ctx, req.PullRequestID)
 	if err != nil || pr == nil {
 		return nil, ErrPRNotFound
 	}
 
 	if pr.Status == models.PRMerged {
-		reviewers, _ := s.prRepo.ListReviewers(ctx, prID)
+		reviewers, _ := s.prRepo.ListReviewers(ctx, req.PullRequestID)
 		return &dto.MergePRResponse{
 			PR: mapPullRequestToDTO(pr, reviewers),
 		}, nil
@@ -121,15 +118,15 @@ func (s *PRService) MergePR(ctx context.Context, req *dto.MergePRRequest) (*dto.
 		return nil, err
 	}
 
-	reviewers, _ := s.prRepo.ListReviewers(ctx, prID)
+	reviewers, _ := s.prRepo.ListReviewers(ctx, req.PullRequestID)
 	return &dto.MergePRResponse{
 		PR: mapPullRequestToDTO(pr, reviewers),
 	}, nil
 }
 
 func (s *PRService) ReassignReviewer(ctx context.Context, req *dto.ReassignReviewerRequest) (*dto.ReassignReviewerResponse, error) {
-	prID := uuid.MustParse(req.PullRequestID)
-	oldUserID := uuid.MustParse(req.OldUserID)
+	prID := req.PullRequestID
+	oldUserID := req.OldUserID
 
 	pr, err := s.prRepo.GetByID(ctx, prID)
 	if err != nil || pr == nil {
@@ -161,7 +158,7 @@ func (s *PRService) ReassignReviewer(ctx context.Context, req *dto.ReassignRevie
 		return nil, err
 	}
 
-	candidates := []uuid.UUID{}
+	var candidates []string
 	for _, u := range users {
 		skip := false
 		for _, r := range reviewers {
@@ -193,20 +190,20 @@ func (s *PRService) ReassignReviewer(ctx context.Context, req *dto.ReassignRevie
 
 	return &dto.ReassignReviewerResponse{
 		PR:         mapPullRequestToDTO(pr, updatedReviewers),
-		ReplacedBy: newReviewer.String(),
+		ReplacedBy: newReviewer,
 	}, nil
 }
 
 func mapPullRequestToDTO(pr *models.PullRequest, reviewers []models.User) dto.PullRequestDTO {
 	reviewersStr := make([]string, len(reviewers))
 	for i, r := range reviewers {
-		reviewersStr[i] = r.UserID.String()
+		reviewersStr[i] = r.UserID
 	}
 
 	return dto.PullRequestDTO{
-		PullRequestID:     pr.PullRequestID.String(),
+		PullRequestID:     pr.PullRequestID,
 		PullRequestName:   pr.PullRequestName,
-		AuthorID:          pr.AuthorID.String(),
+		AuthorID:          pr.AuthorID,
 		Status:            dto.PRStatus(pr.Status),
 		AssignedReviewers: reviewersStr,
 		CreatedAt:         &pr.CreatedAt,

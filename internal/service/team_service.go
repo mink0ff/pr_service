@@ -41,13 +41,8 @@ func (s *TeamService) CreateTeam(ctx context.Context, req *dto.CreateTeamRequest
 	}
 
 	for _, member := range req.Members {
-		userID, err := uuid.Parse(member.UserID)
-		if err != nil {
-			log.Printf("invalid user_id %s: %v", member.UserID, err)
-			return nil, err
-		}
 
-		existingUser, err := s.userRepo.GetByID(ctx, userID)
+		existingUser, err := s.userRepo.GetByID(ctx, member.UserID)
 		if err != nil {
 			log.Printf("user repo error: %v", err)
 			return nil, err
@@ -55,7 +50,7 @@ func (s *TeamService) CreateTeam(ctx context.Context, req *dto.CreateTeamRequest
 
 		if existingUser == nil {
 			user := models.User{
-				UserID:   userID,
+				UserID:   member.UserID,
 				Username: member.Username,
 				TeamID:   teamID,
 				IsActive: member.IsActive,
@@ -74,7 +69,7 @@ func (s *TeamService) CreateTeam(ctx context.Context, req *dto.CreateTeamRequest
 			}
 		}
 
-		if err := s.teamRepo.AddUser(ctx, teamID, userID); err != nil {
+		if err := s.teamRepo.AddUser(ctx, teamID, member.UserID); err != nil {
 			log.Printf("add user to team error: %v", err)
 			return nil, err
 		}
@@ -100,7 +95,7 @@ func (s *TeamService) GetTeam(ctx context.Context, teamName string) (*dto.Team, 
 	members := make([]dto.TeamMember, len(users))
 	for i, u := range users {
 		members[i] = dto.TeamMember{
-			UserID:   u.UserID.String(),
+			UserID:   u.UserID,
 			Username: u.Username,
 			IsActive: u.IsActive,
 		}
