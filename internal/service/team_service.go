@@ -20,7 +20,6 @@ func NewTeamService(teamRepo repository.TeamRepository, userRepo repository.User
 }
 
 func (s *TeamService) CreateTeam(ctx context.Context, req *dto.CreateTeamRequest) (*dto.CreateTeamResponse, error) {
-	// Проверка, существует ли команда
 	existingTeam, err := s.teamRepo.GetByName(ctx, req.TeamName)
 	if err != nil {
 		log.Printf("team repo error: %v", err)
@@ -41,7 +40,6 @@ func (s *TeamService) CreateTeam(ctx context.Context, req *dto.CreateTeamRequest
 		return nil, err
 	}
 
-	// Добавляем участников
 	for _, member := range req.Members {
 		userID, err := uuid.Parse(member.UserID)
 		if err != nil {
@@ -56,7 +54,6 @@ func (s *TeamService) CreateTeam(ctx context.Context, req *dto.CreateTeamRequest
 		}
 
 		if existingUser == nil {
-			// создаём нового пользователя
 			user := models.User{
 				UserID:   userID,
 				Username: member.Username,
@@ -68,7 +65,6 @@ func (s *TeamService) CreateTeam(ctx context.Context, req *dto.CreateTeamRequest
 				return nil, err
 			}
 		} else {
-			// обновляем существующего пользователя
 			existingUser.Username = member.Username
 			existingUser.IsActive = member.IsActive
 			existingUser.TeamID = teamID
@@ -78,7 +74,6 @@ func (s *TeamService) CreateTeam(ctx context.Context, req *dto.CreateTeamRequest
 			}
 		}
 
-		// связываем пользователя с командой (если нужно)
 		if err := s.teamRepo.AddUser(ctx, teamID, userID); err != nil {
 			log.Printf("add user to team error: %v", err)
 			return nil, err
