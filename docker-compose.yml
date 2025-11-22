@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    container_name: prservice_db
+    restart: always
+    environment:
+      POSTGRES_DB: pr_service
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: prservice_app
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/pr_service?sslmode=disable
+      PORT: 8080
+    ports:
+      - "8080:8080"
+    restart: always
+
+volumes:
+  dbdata:

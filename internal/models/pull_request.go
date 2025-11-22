@@ -2,27 +2,22 @@ package models
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
-type RPStatus string
+type PRStatus string
 
 const (
-	RPOpen   RPStatus = "OPEN"
-	RPMerged RPStatus = "MERGED"
+	PROpen   PRStatus = "OPEN"
+	PRMerged PRStatus = "MERGED"
 )
 
 type PullRequest struct {
-	ID        int
-	Title     string
-	AuthorID  int
-	TeamID    int
-	Status    RPStatus
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
-
-type PRReviewer struct {
-	ID         int
-	UserID     int
-	AssignedAt time.Time
+	PullRequestID   uuid.UUID  `db:"pull_request_id"`
+	PullRequestName string     `db:"pull_request_name"`
+	AuthorID        uuid.UUID  `db:"author_id"`
+	Status          PRStatus   `db:"status"`
+	CreatedAt       time.Time  `db:"created_at"`
+	MergedAt        *time.Time `db:"merged_at"`
 }
