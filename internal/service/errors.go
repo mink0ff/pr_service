@@ -1,6 +1,8 @@
 package service
 
-import "errors"
+import (
+	"errors"
+)
 
 var (
 	ErrTeamExists          = errors.New("team already exists")
