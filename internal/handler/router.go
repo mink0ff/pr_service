@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/mink0ff/pr_service/internal/service"
 )
@@ -22,4 +24,10 @@ func RegisterRoutes(r chi.Router, ts service.TeamService, us service.UserService
 
 	statsHandler := NewStatsHandler(ss)
 	r.Get("/stats/reviewers", statsHandler.GetReviewerStatsHandler)
+
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	})
 }
