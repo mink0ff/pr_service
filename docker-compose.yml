@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   db:
     image: postgres:15
@@ -13,18 +11,61 @@ services:
       - "5433:5432"
     volumes:
       - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 5
+    profiles: ["app"]
 
   app:
     build: .
     container_name: prservice_app
+    env_file:
+      - .env
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:postgres@db:5432/pr_service?sslmode=disable
       PORT: 8080
     ports:
       - "8080:8080"
     restart: always
+    profiles: ["app"]
+    volumes:
+      - ./migrations:/app/migrations:ro
+      - ./.env:/app/.env:ro
+
+  test-db:
+    image: postgres:15
+    container_name: prservice_test_db
+    restart: always
+    environment:
+      POSTGRES_DB: pr_service_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - testdbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 5
+    profiles: ["test"]
+
+  integration-tests:
+    build: .
+    container_name: prservice_integration
+    depends_on:
+      test-db:
+        condition: service_healthy
+    env_file:
+      - .env.test
+    command: ["go", "test", "./tests/integration", "-v", "-count=1"]
+    volumes:
+      - .:/app
+    profiles: ["test"]
 
 volumes:
   dbdata:
+  testdbdata:

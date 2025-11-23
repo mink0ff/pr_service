@@ -10,10 +10,11 @@ import (
 )
 
 type DBConfig struct {
-	DSN          string
-	MaxOpenConns int
-	MaxIdleConns int
-	ConnMaxLife  time.Duration
+	DSN           string
+	MaxOpenConns  int
+	MaxIdleConns  int
+	ConnMaxLife   time.Duration
+	MigrationPath string
 }
 
 func LoadDBConfig(envFile string) *DBConfig {
@@ -28,12 +29,14 @@ func LoadDBConfig(envFile string) *DBConfig {
 	maxOpen, _ := strconv.Atoi(getEnv("DB_MAX_OPEN_CONNS", "10"))
 	maxIdle, _ := strconv.Atoi(getEnv("DB_MAX_IDLE_CONNS", "5"))
 	connMaxLifeSec, _ := strconv.Atoi(getEnv("DB_CONN_MAX_LIFETIME", "300"))
+	migrationPath := getEnv("DB_MIGRATION_PATH", "/migrations")
 
 	return &DBConfig{
-		DSN:          getEnv("DB_DSN", ""),
-		MaxOpenConns: maxOpen,
-		MaxIdleConns: maxIdle,
-		ConnMaxLife:  time.Duration(connMaxLifeSec) * time.Second,
+		DSN:           getEnv("DB_DSN", ""),
+		MaxOpenConns:  maxOpen,
+		MaxIdleConns:  maxIdle,
+		ConnMaxLife:   time.Duration(connMaxLifeSec) * time.Second,
+		MigrationPath: migrationPath,
 	}
 }
 

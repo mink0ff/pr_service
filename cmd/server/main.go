@@ -28,7 +28,7 @@ func main() {
 		log.Fatalf("failed to connect to DB: %v", err)
 	}
 
-	if err = migrate.RunMigrations(db, "./migrations"); err != nil {
+	if err = migrate.RunMigrations(db, cfg.MigrationPath); err != nil {
 		log.Fatalf("failed to run migrations: %v", err)
 	}
 
