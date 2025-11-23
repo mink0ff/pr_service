@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"log"
 
 	"github.com/mink0ff/pr_service/internal/dto"
 	"github.com/mink0ff/pr_service/internal/models"
@@ -31,9 +32,11 @@ func (r *ReviewerHistoryRepo) CountAssignmentsByUsers(ctx context.Context) ([]dt
 		Scan(&statsItems).Error
 
 	if err != nil {
+		log.Printf("Failed to count reviewer assignments: %v\n", err)
 		return nil, err
 	}
 
+	log.Printf("Successfully counted assignments for %d users\n", len(statsItems))
 	return statsItems, nil
 }
 

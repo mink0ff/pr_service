@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	_ "log"
+	"log"
 
 	"github.com/google/uuid"
 	"github.com/mink0ff/pr_service/internal/dto"
@@ -32,10 +32,12 @@ func (s *TeamServiceImpl) CreateTeam(ctx context.Context, req *dto.CreateTeamReq
 
 		team, err := s.createTeam(txCtx, req, txTeamRepo)
 		if err != nil {
+			log.Printf("Failed to create team %s: %v", req.TeamName, err)
 			return err
 		}
 
 		if err := s.createOrUpdateMembers(txCtx, team.TeamID, req.Members, txUserRepo); err != nil {
+			log.Printf("Failed to create/update members for team %s: %v", req.TeamName, err)
 			return err
 		}
 
@@ -46,10 +48,12 @@ func (s *TeamServiceImpl) CreateTeam(ctx context.Context, req *dto.CreateTeamReq
 			},
 		}
 
+		log.Printf("Team created successfully: teamName=%s", team.TeamName)
 		return nil
 	})
 
 	if err != nil {
+		log.Printf("Transaction failed for create team %s: %v", req.TeamName, err)
 		return nil, err
 	}
 
@@ -57,13 +61,16 @@ func (s *TeamServiceImpl) CreateTeam(ctx context.Context, req *dto.CreateTeamReq
 }
 
 func (s *TeamServiceImpl) GetTeam(ctx context.Context, teamName string) (*dto.Team, error) {
+
 	team, err := s.teamRepo.GetByName(ctx, teamName)
 	if err != nil || team == nil {
+		log.Printf("Team not found: teamName=%s", teamName)
 		return nil, ErrTeamNotFound
 	}
 
 	users, err := s.teamRepo.ListUsersByTeam(ctx, team.TeamID)
 	if err != nil {
+		log.Printf("Failed to list users for team %s: %v", teamName, err)
 		return nil, err
 	}
 
@@ -76,6 +83,7 @@ func (s *TeamServiceImpl) GetTeam(ctx context.Context, teamName string) (*dto.Te
 		}
 	}
 
+	log.Printf("Team retrieved successfully: teamName=%s, members=%d", teamName, len(members))
 	return &dto.Team{
 		TeamName: team.TeamName,
 		Members:  members,

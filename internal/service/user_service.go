@@ -27,16 +27,14 @@ func (s *UserServiceImpl) CreateUser(ctx context.Context, req *dto.CreateUserReq
 	}
 
 	err := s.userRepo.Create(ctx, user)
-
 	if err != nil {
-		log.Printf("user create error: %v", err)
+		log.Printf("Failed to create user %s: %v", req.UserID, err)
 		return nil, ErrUserExists
 	}
 
 	team, err := s.teamRepo.GetByID(ctx, user.TeamID)
-
 	if err != nil {
-		log.Printf("team get error: %v", err)
+		log.Printf("Failed to get team %s for user %s: %v", user.TeamID, user.UserID, err)
 		return nil, ErrTeamNotFound
 	}
 
@@ -47,13 +45,15 @@ func (s *UserServiceImpl) CreateUser(ctx context.Context, req *dto.CreateUserReq
 		IsActive: user.IsActive,
 	}
 
+	log.Printf("User created successfully: userID=%s, teamName=%s", dtoUser.UserID, dtoUser.TeamName)
 	return &dtoUser, nil
 }
 
 func (s *UserServiceImpl) SetActive(ctx context.Context, req dto.SetUserActiveRequest) (*dto.User, error) {
+
 	user, err := s.userRepo.GetByID(ctx, req.UserID)
 	if err != nil || user == nil {
-		log.Printf("user not found: %v", req.UserID)
+		log.Printf("User not found: userID=%s", req.UserID)
 		return nil, ErrUserNotFound
 	}
 
@@ -65,13 +65,13 @@ func (s *UserServiceImpl) SetActive(ctx context.Context, req dto.SetUserActiveRe
 	}
 
 	if err := s.userRepo.Update(ctx, userUpdate); err != nil {
+		log.Printf("Failed to update user %s active status: %v", req.UserID, err)
 		return nil, err
 	}
 
 	team, err := s.teamRepo.GetByID(ctx, user.TeamID)
-
 	if err != nil {
-		log.Printf("team get error: %v", err)
+		log.Printf("Failed to get team %s for user %s: %v", user.TeamID, user.UserID, err)
 		return nil, ErrTeamNotFound
 	}
 
@@ -82,6 +82,7 @@ func (s *UserServiceImpl) SetActive(ctx context.Context, req dto.SetUserActiveRe
 		IsActive: userUpdate.IsActive,
 	}
 
+	log.Printf("User active status updated: userID=%s, isActive=%v", userDto.UserID, userDto.IsActive)
 	return &userDto, nil
 }
 

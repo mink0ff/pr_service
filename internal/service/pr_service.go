@@ -4,7 +4,6 @@ import (
 	"context"
 	_ "errors"
 	"log"
-	_ "log"
 	"math/rand"
 	"time"
 
@@ -14,7 +13,6 @@ import (
 	"github.com/mink0ff/pr_service/internal/repository"
 	"github.com/mink0ff/pr_service/internal/repository/transaction"
 	"gorm.io/gorm"
-	_ "gorm.io/gorm"
 )
 
 type PRServiceImpl struct {
@@ -49,21 +47,25 @@ func (s *PRServiceImpl) CreatePR(ctx context.Context, req *dto.CreatePRRequest) 
 
 		pr, err := s.createPullRequest(txCtx, req, txPrRepo)
 		if err != nil {
+			log.Printf("Failed to create PR: %v", err)
 			return err
 		}
 
 		author, err := s.getAuthorWithTeamLock(txCtx, req.AuthorID, txUserRepo)
 		if err != nil {
+			log.Printf("Failed to get author: %v", err)
 			return err
 		}
 
 		reviewers := s.selectReviewers(txCtx, author.UserID, author.TeamID, txUserRepo)
 
 		if err := s.assignReviewers(txCtx, pr.PullRequestID, reviewers, txPrRepo); err != nil {
+			log.Printf("Failed to assign reviewers: %v", err)
 			return err
 		}
 
 		if err := s.logReviewerAssignments(txCtx, txHistoryRepo, pr.PullRequestID, reviewers); err != nil {
+			log.Printf("Failed to log reviewer assignments: %v", err)
 			return err
 		}
 
@@ -82,20 +84,24 @@ func (s *PRServiceImpl) CreatePR(ctx context.Context, req *dto.CreatePRRequest) 
 	})
 
 	if err != nil {
+		log.Printf("Transaction failed for CreatePR: %v", err)
 		return nil, err
 	}
 
+	log.Printf("CreatePR completed successfully for PRID=%s", req.PullRequestID)
 	return resp, nil
 }
 
 func (s *PRServiceImpl) MergePR(ctx context.Context, req *dto.MergePRRequest) (*dto.MergePRResponse, error) {
 	pr, err := s.prRepo.GetByID(ctx, req.PullRequestID)
 	if err != nil || pr == nil {
+		log.Printf("PR not found: %v", req.PullRequestID)
 		return nil, ErrPRNotFound
 	}
 
 	if pr.Status == models.PRMerged {
 		reviewers, _ := s.prRepo.ListReviewers(ctx, req.PullRequestID)
+		log.Printf("PR already merged: %v", req.PullRequestID)
 		return &dto.MergePRResponse{
 			PR: mapPullRequestToDTO(pr, reviewers),
 		}, nil
@@ -112,6 +118,7 @@ func (s *PRServiceImpl) MergePR(ctx context.Context, req *dto.MergePRRequest) (*
 	}
 
 	if err := s.prRepo.Update(ctx, newPr); err != nil {
+		log.Printf("Failed to merge PR: %v", err)
 		return nil, err
 	}
 
@@ -131,24 +138,29 @@ func (s *PRServiceImpl) ReassignReviewer(ctx context.Context, req *dto.ReassignR
 
 		pr, err := s.getPRForReassign(txCtx, req.PullRequestID, txPrRepo)
 		if err != nil {
+			log.Printf("Failed to get PR for reassign: %v", err)
 			return err
 		}
 
 		reviewers, oldReviewer, err := s.getOldReviewer(txCtx, pr.PullRequestID, req.OldUserID, txPrRepo)
 		if err != nil {
+			log.Printf("Failed to get old reviewer: %v", err)
 			return err
 		}
 
 		newReviewerID, err := s.pickNewReviewer(txCtx, reviewers, oldReviewer.TeamID, pr.AuthorID, txUserRepo)
 		if err != nil {
+			log.Printf("Failed to pick new reviewer: %v", err)
 			return err
 		}
 
 		if err := s.updateReviewers(txCtx, pr.PullRequestID, req.OldUserID, newReviewerID, txPrRepo); err != nil {
+			log.Printf("Failed to update reviewers: %v", err)
 			return err
 		}
 
 		if err := s.logReviewerAssignments(txCtx, txHistoryRepo, pr.PullRequestID, []string{newReviewerID}); err != nil {
+			log.Printf("Failed to log reassignment: %v", err)
 			return err
 		}
 
@@ -163,6 +175,7 @@ func (s *PRServiceImpl) ReassignReviewer(ctx context.Context, req *dto.ReassignR
 	})
 
 	if err != nil {
+		log.Printf("Transaction failed for ReassignReviewer: %v", err)
 		return nil, err
 	}
 
@@ -350,7 +363,6 @@ func (s *PRServiceImpl) pickNewReviewer(
 		return "", ErrNoCandidate
 	}
 
-	rand.Seed(time.Now().UnixNano())
 	return candidates[rand.Intn(len(candidates))], nil
 }
 

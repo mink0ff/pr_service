@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log"
 
 	"github.com/mink0ff/pr_service/internal/dto"
 	"github.com/mink0ff/pr_service/internal/repository"
@@ -18,6 +19,7 @@ func NewStatsService(historyRepo repository.ReviewerHistoryRepository) StatsServ
 func (s *StatsServiceImpl) GetReviewerStats(ctx context.Context) (*dto.ReviewerStatsResponse, error) {
 	items, err := s.historyRepo.CountAssignmentsByUsers(ctx)
 	if err != nil {
+		log.Printf("Failed to count assignments by users: %v", err)
 		return nil, err
 	}
 
