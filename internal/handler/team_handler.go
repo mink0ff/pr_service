@@ -53,3 +53,20 @@ func (h *TeamHandler) GetTeam(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, team)
 }
+
+func (h *TeamHandler) DeactivateTeamUsersHandler(w http.ResponseWriter, r *http.Request) {
+	var req dto.DeactivateTeamUsersRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	resp, err := h.teamService.DeactivateTeamUsers(r.Context(), &req)
+	if err != nil {
+		status, errResp := MapError(err)
+		writeJSON(w, status, errResp)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}

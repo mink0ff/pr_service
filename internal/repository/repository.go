@@ -38,6 +38,7 @@ type PullRequestRepository interface {
 	ListReviewers(ctx context.Context, prID string) ([]models.User, error)
 	ListByReviewer(ctx context.Context, reviewerID string) ([]models.PullRequest, error)
 	WithTx(tx *gorm.DB) PullRequestRepository
+	RemoveReviewerFromAllPRs(ctx context.Context, userID string) error
 }
 
 type ReviewerHistoryRepository interface {

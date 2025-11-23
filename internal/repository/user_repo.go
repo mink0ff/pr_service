@@ -36,7 +36,9 @@ func (r *UserRepo) GetByID(ctx context.Context, id string) (*models.User, error)
 }
 
 func (r *UserRepo) Update(ctx context.Context, user models.User) error {
-	return r.db.WithContext(ctx).Save(&user).Error
+	return r.db.WithContext(ctx).
+		Where("user_id = ?", user.UserID).
+		Save(&user).Error
 }
 
 func (r *UserRepo) ListActiveByTeam(ctx context.Context, teamID uuid.UUID) ([]models.User, error) {
