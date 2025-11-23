@@ -89,88 +89,67 @@ func (s *PRService) MergePR(ctx context.Context, req *dto.MergePRRequest) (*dto.
 		}, nil
 	}
 
-	now := time.Now()
-	pr.Status = models.PRMerged
-	pr.MergedAt = &now
+	mergeTime := time.Now()
+	newPr := models.PullRequest{
+		PullRequestID:   pr.PullRequestID,
+		PullRequestName: pr.PullRequestName,
+		AuthorID:        pr.AuthorID,
+		Status:          models.PRMerged,
+		CreatedAt:       pr.CreatedAt,
+		MergedAt:        &mergeTime,
+	}
 
-	if err := s.prRepo.Update(ctx, *pr); err != nil {
+	if err := s.prRepo.Update(ctx, newPr); err != nil {
 		return nil, err
 	}
 
 	reviewers, _ := s.prRepo.ListReviewers(ctx, req.PullRequestID)
 	return &dto.MergePRResponse{
-		PR: mapPullRequestToDTO(pr, reviewers),
+		PR: mapPullRequestToDTO(&newPr, reviewers),
 	}, nil
 }
 
 func (s *PRService) ReassignReviewer(ctx context.Context, req *dto.ReassignReviewerRequest) (*dto.ReassignReviewerResponse, error) {
-	prID := req.PullRequestID
-	oldUserID := req.OldUserID
+	var resp *dto.ReassignReviewerResponse
 
-	pr, err := s.prRepo.GetByID(ctx, prID)
-	if err != nil || pr == nil {
-		return nil, ErrPRNotFound
-	}
+	err := s.txManager.Do(ctx, func(txCtx context.Context, tx *gorm.DB) error {
+		txPrRepo := s.prRepo.WithTx(tx)
+		txUserRepo := s.userRepo.WithTx(tx)
 
-	if pr.Status == models.PRMerged {
-		return nil, ErrPRMerged
-	}
+		pr, err := s.getPRForReassign(txCtx, req.PullRequestID, txPrRepo)
+		if err != nil {
+			return err
+		}
 
-	reviewers, err := s.prRepo.ListReviewers(ctx, prID)
+		reviewers, oldReviewer, err := s.getOldReviewer(txCtx, pr.PullRequestID, req.OldUserID, txPrRepo)
+		if err != nil {
+			return err
+		}
+
+		newReviewerID, err := s.pickNewReviewer(txCtx, reviewers, oldReviewer.TeamID, pr.AuthorID, txUserRepo)
+		if err != nil {
+			return err
+		}
+
+		if err := s.updateReviewers(txCtx, pr.PullRequestID, req.OldUserID, newReviewerID, txPrRepo); err != nil {
+			return err
+		}
+
+		updatedReviewers, _ := txPrRepo.ListReviewers(txCtx, pr.PullRequestID)
+
+		resp = &dto.ReassignReviewerResponse{
+			PR:         mapPullRequestToDTO(pr, updatedReviewers),
+			ReplacedBy: newReviewerID,
+		}
+
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
 	}
 
-	var oldReviewer *models.User
-	for _, r := range reviewers {
-		if r.UserID == oldUserID {
-			oldReviewer = &r
-			break
-		}
-	}
-	if oldReviewer == nil {
-		return nil, ErrReviewerNotAssigned
-	}
-
-	users, err := s.userRepo.ListActiveByTeam(ctx, oldReviewer.TeamID)
-	if err != nil {
-		return nil, err
-	}
-
-	var candidates []string
-	for _, u := range users {
-		skip := false
-		for _, r := range reviewers {
-			if r.UserID == u.UserID {
-				skip = true
-				break
-			}
-		}
-		if !skip {
-			candidates = append(candidates, u.UserID)
-		}
-	}
-
-	if len(candidates) == 0 {
-		return nil, ErrNoCandidate
-	}
-
-	rand.Seed(time.Now().UnixNano())
-	newReviewer := candidates[rand.Intn(len(candidates))]
-
-	if err := s.prRepo.RemoveReviewer(ctx, prID, oldUserID); err != nil {
-		return nil, err
-	}
-	if err := s.prRepo.AddReviewer(ctx, prID, newReviewer); err != nil {
-		return nil, err
-	}
-
-	updatedReviewers, _ := s.prRepo.ListReviewers(ctx, prID)
-
-	return &dto.ReassignReviewerResponse{
-		PR:         mapPullRequestToDTO(pr, updatedReviewers),
-		ReplacedBy: newReviewer,
-	}, nil
+	return resp, nil
 }
 
 func mapPullRequestToDTO(pr *models.PullRequest, reviewers []models.User) dto.PullRequestDTO {
@@ -236,7 +215,6 @@ func (s *PRService) getAuthorWithTeamLock(ctx context.Context, authorID string, 
 func (s *PRService) selectReviewers(ctx context.Context, authorID string, teamID uuid.UUID, userRepo repository.UserRepository) []string {
 	users, _ := userRepo.ListActiveByTeam(ctx, teamID)
 
-	// фильтруем авторов
 	candidates := make([]string, 0, len(users))
 	for _, u := range users {
 		if u.UserID != authorID {
@@ -276,5 +254,104 @@ func (s *PRService) assignReviewers(ctx context.Context, prID string, reviewers 
 			return err
 		}
 	}
+	return nil
+}
+
+func (s *PRService) getPRForReassign(ctx context.Context, prID string, prRepo repository.PullRequestRepository) (*models.PullRequest, error) {
+	pr, err := prRepo.GetByID(ctx, prID)
+	if err != nil || pr == nil {
+		return nil, ErrPRNotFound
+	}
+
+	if pr.Status == models.PRMerged {
+		return nil, ErrPRMerged
+	}
+
+	return pr, nil
+}
+
+func (s *PRService) getOldReviewer(
+	ctx context.Context,
+	prID string,
+	oldUserID string,
+	prRepo repository.PullRequestRepository,
+) ([]models.User, *models.User, error) {
+
+	reviewers, err := prRepo.ListReviewers(ctx, prID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var oldReviewer *models.User
+	for _, r := range reviewers {
+		if r.UserID == oldUserID {
+			oldReviewer = &r
+			break
+		}
+	}
+
+	if oldReviewer == nil {
+		return nil, nil, ErrReviewerNotAssigned
+	}
+
+	return reviewers, oldReviewer, nil
+}
+
+func (s *PRService) pickNewReviewer(
+	ctx context.Context,
+	reviewers []models.User,
+	teamID uuid.UUID,
+	authorID string,
+	userRepo repository.UserRepository,
+) (string, error) {
+
+	users, err := userRepo.ListActiveByTeam(ctx, teamID)
+	if err != nil {
+		return "", err
+	}
+
+	assigned := map[string]struct{}{}
+	for _, r := range reviewers {
+		assigned[r.UserID] = struct{}{}
+	}
+
+	var candidates []string
+	for _, u := range users {
+
+		if u.UserID == authorID {
+			continue
+		}
+
+		if _, exists := assigned[u.UserID]; exists {
+			continue
+		}
+
+		candidates = append(candidates, u.UserID)
+	}
+
+	if len(candidates) == 0 {
+		return "", ErrNoCandidate
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	return candidates[rand.Intn(len(candidates))], nil
+}
+
+func (s *PRService) updateReviewers(
+	ctx context.Context,
+	prID string,
+	oldUserID string,
+	newUserID string,
+	prRepo repository.PullRequestRepository,
+) error {
+
+	if err := prRepo.RemoveReviewer(ctx, prID, oldUserID); err != nil {
+		return err
+	}
+
+	if err := prRepo.AddReviewer(ctx, prID, newUserID); err != nil {
+		return err
+	}
+
 	return nil
 }

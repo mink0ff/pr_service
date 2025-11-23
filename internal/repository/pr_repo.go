@@ -56,6 +56,7 @@ func (r *PrRepo) ListReviewers(ctx context.Context, prID string) ([]models.User,
 	err := r.db.WithContext(ctx).
 		Joins("JOIN pr_reviewers prr ON prr.reviewer_id = users.user_id").
 		Where("prr.pull_request_id = ?", prID).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
 		Find(&users).Error
 	return users, err
 }
