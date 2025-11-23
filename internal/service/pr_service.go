@@ -12,26 +12,27 @@ import (
 	"github.com/mink0ff/pr_service/internal/dto"
 	"github.com/mink0ff/pr_service/internal/models"
 	"github.com/mink0ff/pr_service/internal/repository"
+	"github.com/mink0ff/pr_service/internal/repository/transaction"
 	"gorm.io/gorm"
 	_ "gorm.io/gorm"
 )
 
 type PRServiceImpl struct {
-	txManager *repository.TransactionManager
 	prRepo    repository.PullRequestRepository
 	userRepo  repository.UserRepository
 	teamRepo  repository.TeamRepository
+	txManager *transaction.Manager
 }
 
-func NewPRService(txManager *repository.TransactionManager,
-	prRepo repository.PullRequestRepository,
+func NewPRService(prRepo repository.PullRequestRepository,
 	userRepo repository.UserRepository,
-	teamRepo repository.TeamRepository) PRService {
+	teamRepo repository.TeamRepository,
+	txManager *transaction.Manager) PRService {
 	return &PRServiceImpl{
-		txManager: txManager,
 		prRepo:    prRepo,
 		userRepo:  userRepo,
 		teamRepo:  teamRepo,
+		txManager: txManager,
 	}
 }
 

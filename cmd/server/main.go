@@ -10,6 +10,7 @@ import (
 	"github.com/mink0ff/pr_service/internal/repository"
 	"github.com/mink0ff/pr_service/internal/repository/gorm"
 	"github.com/mink0ff/pr_service/internal/repository/migrate"
+	"github.com/mink0ff/pr_service/internal/repository/transaction"
 	"github.com/mink0ff/pr_service/internal/service"
 )
 
@@ -32,11 +33,11 @@ func main() {
 	teamRepo := repository.NewTeamRepo(db)
 	prRepo := repository.NewPrRepo(db)
 
-	txManager := repository.NewTransactionManager(db)
+	txManager := transaction.NewTransactionManager(db)
 
 	userService := service.NewUserService(userRepo, teamRepo)
-	teamService := service.NewTeamService(teamRepo, userRepo)
-	prService := service.NewPRService(txManager, prRepo, userRepo, teamRepo)
+	teamService := service.NewTeamService(teamRepo, userRepo, txManager)
+	prService := service.NewPRService(prRepo, userRepo, teamRepo, txManager)
 
 	r := chi.NewRouter()
 	handler.RegisterRoutes(r, teamService, userService, prService)
