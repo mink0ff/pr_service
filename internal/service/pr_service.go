@@ -18,21 +18,24 @@ import (
 )
 
 type PRServiceImpl struct {
-	prRepo    repository.PullRequestRepository
-	userRepo  repository.UserRepository
-	teamRepo  repository.TeamRepository
-	txManager *transaction.Manager
+	prRepo      repository.PullRequestRepository
+	userRepo    repository.UserRepository
+	teamRepo    repository.TeamRepository
+	historyRepo repository.ReviewerHistoryRepository
+	txManager   *transaction.Manager
 }
 
 func NewPRService(prRepo repository.PullRequestRepository,
 	userRepo repository.UserRepository,
 	teamRepo repository.TeamRepository,
+	historyRepo repository.ReviewerHistoryRepository,
 	txManager *transaction.Manager) PRService {
 	return &PRServiceImpl{
-		prRepo:    prRepo,
-		userRepo:  userRepo,
-		teamRepo:  teamRepo,
-		txManager: txManager,
+		prRepo:      prRepo,
+		userRepo:    userRepo,
+		teamRepo:    teamRepo,
+		historyRepo: historyRepo,
+		txManager:   txManager,
 	}
 }
 
@@ -42,6 +45,7 @@ func (s *PRServiceImpl) CreatePR(ctx context.Context, req *dto.CreatePRRequest) 
 	err := s.txManager.Do(ctx, func(txCtx context.Context, tx *gorm.DB) error {
 		txUserRepo := s.userRepo.WithTx(tx)
 		txPrRepo := s.prRepo.WithTx(tx)
+		txHistoryRepo := s.historyRepo.WithTx(tx)
 
 		pr, err := s.createPullRequest(txCtx, req, txPrRepo)
 		if err != nil {
@@ -56,6 +60,10 @@ func (s *PRServiceImpl) CreatePR(ctx context.Context, req *dto.CreatePRRequest) 
 		reviewers := s.selectReviewers(txCtx, author.UserID, author.TeamID, txUserRepo)
 
 		if err := s.assignReviewers(txCtx, pr.PullRequestID, reviewers, txPrRepo); err != nil {
+			return err
+		}
+
+		if err := s.logReviewerAssignments(txCtx, txHistoryRepo, pr.PullRequestID, reviewers); err != nil {
 			return err
 		}
 
@@ -119,6 +127,7 @@ func (s *PRServiceImpl) ReassignReviewer(ctx context.Context, req *dto.ReassignR
 	err := s.txManager.Do(ctx, func(txCtx context.Context, tx *gorm.DB) error {
 		txPrRepo := s.prRepo.WithTx(tx)
 		txUserRepo := s.userRepo.WithTx(tx)
+		txHistoryRepo := s.historyRepo.WithTx(tx)
 
 		pr, err := s.getPRForReassign(txCtx, req.PullRequestID, txPrRepo)
 		if err != nil {
@@ -136,6 +145,10 @@ func (s *PRServiceImpl) ReassignReviewer(ctx context.Context, req *dto.ReassignR
 		}
 
 		if err := s.updateReviewers(txCtx, pr.PullRequestID, req.OldUserID, newReviewerID, txPrRepo); err != nil {
+			return err
+		}
+
+		if err := s.logReviewerAssignments(txCtx, txHistoryRepo, pr.PullRequestID, []string{newReviewerID}); err != nil {
 			return err
 		}
 
@@ -355,6 +368,29 @@ func (s *PRServiceImpl) updateReviewers(
 
 	if err := prRepo.AddReviewer(ctx, prID, newUserID); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (s *PRServiceImpl) logReviewerAssignments(
+	ctx context.Context,
+	txRepo repository.ReviewerHistoryRepository,
+	prID string,
+	reviewers []string,
+) error {
+
+	for _, reviewerID := range reviewers {
+		event := models.ReviewerAssignmentHistory{
+			AssigmentHistoryID: uuid.New(),
+			PrID:               prID,
+			UserID:             reviewerID,
+			CreatedAt:          time.Now(),
+		}
+
+		if err := txRepo.AddEvent(ctx, event); err != nil {
+			return err
+		}
 	}
 
 	return nil

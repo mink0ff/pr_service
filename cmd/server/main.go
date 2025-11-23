@@ -32,15 +32,17 @@ func main() {
 	userRepo := repository.NewUserRepo(db)
 	teamRepo := repository.NewTeamRepo(db)
 	prRepo := repository.NewPrRepo(db)
+	reviewerHistoryPero := repository.NewReviewerHistoryRepo(db)
 
 	txManager := transaction.NewTransactionManager(db)
 
 	userService := service.NewUserService(userRepo, teamRepo)
 	teamService := service.NewTeamService(teamRepo, userRepo, txManager)
-	prService := service.NewPRService(prRepo, userRepo, teamRepo, txManager)
+	prService := service.NewPRService(prRepo, userRepo, teamRepo, reviewerHistoryPero, txManager)
+	statsService := service.NewStatsService(reviewerHistoryPero)
 
 	r := chi.NewRouter()
-	handler.RegisterRoutes(r, teamService, userService, prService)
+	handler.RegisterRoutes(r, teamService, userService, prService, statsService)
 
 	addr := ":8080"
 	log.Printf("Starting server at %s", addr)

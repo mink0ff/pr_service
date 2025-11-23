@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/mink0ff/pr_service/internal/dto"
 	"github.com/mink0ff/pr_service/internal/models"
 	"gorm.io/gorm"
 )
@@ -37,4 +38,10 @@ type PullRequestRepository interface {
 	ListReviewers(ctx context.Context, prID string) ([]models.User, error)
 	ListByReviewer(ctx context.Context, reviewerID string) ([]models.PullRequest, error)
 	WithTx(tx *gorm.DB) PullRequestRepository
+}
+
+type ReviewerHistoryRepository interface {
+	AddEvent(ctx context.Context, event models.ReviewerAssignmentHistory) error
+	CountAssignmentsByUsers(ctx context.Context) ([]dto.ReviewerStatsItem, error)
+	WithTx(tx *gorm.DB) ReviewerHistoryRepository
 }

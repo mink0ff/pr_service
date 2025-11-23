@@ -5,7 +5,7 @@ import (
 	"github.com/mink0ff/pr_service/internal/service"
 )
 
-func RegisterRoutes(r chi.Router, ts service.TeamService, us service.UserService, prs service.PRService) {
+func RegisterRoutes(r chi.Router, ts service.TeamService, us service.UserService, prs service.PRService, ss service.StatsService) {
 	teamHandler := NewTeamHandler(ts)
 	r.Post("/team/add", teamHandler.CreateTeam)
 	r.Get("/team/get", teamHandler.GetTeam)
@@ -18,4 +18,7 @@ func RegisterRoutes(r chi.Router, ts service.TeamService, us service.UserService
 	r.Post("/pullRequest/create", prHandler.CreatePR)
 	r.Post("/pullRequest/merge", prHandler.MergePR)
 	r.Post("/pullRequest/reassign", prHandler.ReassignReviewer)
+
+	statsHandler := NewStatsHandler(ss)
+	r.Get("/stats/reviewers", statsHandler.GetReviewerStatsHandler)
 }
