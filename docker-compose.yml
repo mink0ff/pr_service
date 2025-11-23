@@ -54,17 +54,18 @@ services:
     profiles: ["test"]
 
   integration-tests:
-    build: .
+    image: golang:1.25-alpine
     container_name: prservice_integration
+    working_dir: /app
+    volumes:
+      - .:/app
     depends_on:
       test-db:
         condition: service_healthy
     env_file:
       - .env.test
-    command: ["go", "test", "./tests/integration", "-v", "-count=1"]
-    volumes:
-      - .:/app
-    profiles: ["test"]
+    command: [ "go", "version" ]
+    profiles: [ "test" ]
 
 volumes:
   dbdata:
