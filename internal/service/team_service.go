@@ -2,82 +2,56 @@ package service
 
 import (
 	"context"
-	"log"
+	_ "log"
 
 	"github.com/google/uuid"
 	"github.com/mink0ff/pr_service/internal/dto"
 	"github.com/mink0ff/pr_service/internal/models"
 	"github.com/mink0ff/pr_service/internal/repository"
+	"github.com/mink0ff/pr_service/internal/repository/transaction"
+	"gorm.io/gorm"
 )
 
 type TeamServiceImpl struct {
-	teamRepo repository.TeamRepository
-	userRepo repository.UserRepository
+	teamRepo  repository.TeamRepository
+	userRepo  repository.UserRepository
+	txManager *transaction.Manager
 }
 
-func NewTeamService(teamRepo repository.TeamRepository, userRepo repository.UserRepository) TeamService {
-	return &TeamServiceImpl{teamRepo: teamRepo, userRepo: userRepo}
+func NewTeamService(teamRepo repository.TeamRepository, userRepo repository.UserRepository, manager *transaction.Manager) TeamService {
+	return &TeamServiceImpl{teamRepo: teamRepo, userRepo: userRepo, txManager: manager}
 }
 
 func (s *TeamServiceImpl) CreateTeam(ctx context.Context, req *dto.CreateTeamRequest) (*dto.CreateTeamResponse, error) {
-	existingTeam, err := s.teamRepo.GetByName(ctx, req.TeamName)
-	if err != nil {
-		log.Printf("team repo error: %v", err)
-		return nil, err
-	}
-	if existingTeam != nil {
-		return nil, ErrTeamExists
-	}
+	var resp *dto.CreateTeamResponse
 
-	teamID := uuid.New()
-	team := models.Team{
-		TeamID:   teamID,
-		TeamName: req.TeamName,
-	}
+	err := s.txManager.Do(ctx, func(txCtx context.Context, tx *gorm.DB) error {
+		txTeamRepo := s.teamRepo.WithTx(tx)
+		txUserRepo := s.userRepo.WithTx(tx)
 
-	if err := s.teamRepo.Create(ctx, team); err != nil {
-		log.Printf("team create error: %v", err)
-		return nil, err
-	}
-
-	for _, member := range req.Members {
-
-		existingUser, err := s.userRepo.GetByID(ctx, member.UserID)
+		team, err := s.createTeam(txCtx, req, txTeamRepo)
 		if err != nil {
-			log.Printf("user repo error: %v", err)
-			return nil, err
+			return err
 		}
 
-		if existingUser == nil {
-			user := models.User{
-				UserID:   member.UserID,
-				Username: member.Username,
-				TeamID:   teamID,
-				IsActive: member.IsActive,
-			}
-			if err := s.userRepo.Create(ctx, user); err != nil {
-				log.Printf("create user error: %v", err)
-				return nil, err
-			}
-		} else {
-			existingUser.Username = member.Username
-			existingUser.IsActive = member.IsActive
-			existingUser.TeamID = teamID
-			if err := s.userRepo.Update(ctx, *existingUser); err != nil {
-				log.Printf("update user error: %v", err)
-				return nil, err
-			}
+		if err := s.createOrUpdateMembers(txCtx, team.TeamID, req.Members, txUserRepo); err != nil {
+			return err
 		}
 
-		if err := s.teamRepo.AddUser(ctx, teamID, member.UserID); err != nil {
-			log.Printf("add user to team error: %v", err)
-			return nil, err
+		resp = &dto.CreateTeamResponse{
+			Team: dto.Team{
+				TeamName: team.TeamName,
+				Members:  req.Members,
+			},
 		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
-	resp := &dto.CreateTeamResponse{
-		Team: *req,
-	}
 	return resp, nil
 }
 
@@ -105,4 +79,64 @@ func (s *TeamServiceImpl) GetTeam(ctx context.Context, teamName string) (*dto.Te
 		TeamName: team.TeamName,
 		Members:  members,
 	}, nil
+}
+
+func (s *TeamServiceImpl) createTeam(
+	ctx context.Context,
+	req *dto.CreateTeamRequest,
+	teamRepo repository.TeamRepository,
+) (*models.Team, error) {
+
+	existing, err := teamRepo.GetByName(ctx, req.TeamName)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return nil, ErrTeamExists
+	}
+
+	team := &models.Team{
+		TeamID:   uuid.New(),
+		TeamName: req.TeamName,
+	}
+
+	if err := teamRepo.Create(ctx, *team); err != nil {
+		return nil, err
+	}
+
+	return team, nil
+}
+
+func (s *TeamServiceImpl) createOrUpdateMembers(
+	ctx context.Context,
+	teamID uuid.UUID,
+	members []dto.TeamMember,
+	userRepo repository.UserRepository,
+) error {
+
+	for _, m := range members {
+		existingUser, err := userRepo.GetByID(ctx, m.UserID)
+		if err != nil {
+			return err
+		}
+
+		user := models.User{
+			UserID:   m.UserID,
+			Username: m.Username,
+			TeamID:   teamID,
+			IsActive: m.IsActive,
+		}
+
+		if existingUser == nil {
+			if err := userRepo.Create(ctx, user); err != nil {
+				return err
+			}
+		} else {
+			if err := userRepo.Update(ctx, user); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

@@ -22,9 +22,6 @@ type TeamRepository interface {
 	GetByID(ctx context.Context, teamID uuid.UUID) (*models.Team, error)
 	GetByName(ctx context.Context, teamName string) (*models.Team, error)
 
-	AddUser(ctx context.Context, teamID uuid.UUID, userID string) error
-	RemoveUser(ctx context.Context, teamID uuid.UUID, userID string) error
-
 	ListUsersByTeam(ctx context.Context, teamID uuid.UUID) ([]models.User, error)
 	WithTx(tx *gorm.DB) TeamRepository
 }

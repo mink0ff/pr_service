@@ -25,7 +25,9 @@ func (r *UserRepo) Create(ctx context.Context, user models.User) error {
 func (r *UserRepo) GetByID(ctx context.Context, id string) (*models.User, error) {
 	var user models.User
 
-	err := r.db.WithContext(ctx).First(&user, "user_id = ?", id).Error
+	err := r.db.WithContext(ctx).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		First(&user, "user_id = ?", id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
