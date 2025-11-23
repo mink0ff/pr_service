@@ -28,7 +28,9 @@ func main() {
 		log.Fatalf("failed to connect to DB: %v", err)
 	}
 
-	migrate.RunMigrations(db)
+	if err = migrate.RunMigrations(db, "./migrations"); err != nil {
+		log.Fatalf("failed to run migrations: %v", err)
+	}
 
 	userRepo := repository.NewUserRepo(db)
 	teamRepo := repository.NewTeamRepo(db)

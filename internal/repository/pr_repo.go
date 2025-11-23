@@ -34,7 +34,9 @@ func (r *PrRepo) GetByID(ctx context.Context, id string) (*models.PullRequest, e
 }
 
 func (r *PrRepo) Update(ctx context.Context, pr models.PullRequest) error {
-	return r.db.WithContext(ctx).Save(&pr).Error
+	return r.db.WithContext(ctx).
+		Where("pull_request_id = ?", pr.PullRequestID).
+		Save(&pr).Error
 }
 
 func (r *PrRepo) AddReviewer(ctx context.Context, prID string, reviewerID string) error {
