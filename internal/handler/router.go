@@ -5,7 +5,7 @@ import (
 	"github.com/mink0ff/pr_service/internal/service"
 )
 
-func RegisterRoutes(r chi.Router, ts *service.TeamService, us *service.UserService, prs *service.PRService) {
+func RegisterRoutes(r chi.Router, ts service.TeamService, us service.UserService, prs service.PRService) {
 	teamHandler := NewTeamHandler(ts)
 	r.Post("/team/add", teamHandler.CreateTeam)
 	r.Get("/team/get", teamHandler.GetTeam)

@@ -34,7 +34,7 @@ func main() {
 
 	txManager := repository.NewTransactionManager(db)
 
-	userService := service.NewUserService(userRepo)
+	userService := service.NewUserService(userRepo, teamRepo)
 	teamService := service.NewTeamService(teamRepo, userRepo)
 	prService := service.NewPRService(txManager, prRepo, userRepo, teamRepo)
 

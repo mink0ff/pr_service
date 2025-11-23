@@ -9,10 +9,10 @@ import (
 )
 
 type PRHandler struct {
-	prService *service.PRService
+	prService service.PRService
 }
 
-func NewPRHandler(prService *service.PRService) *PRHandler {
+func NewPRHandler(prService service.PRService) *PRHandler {
 	return &PRHandler{prService: prService}
 }
 

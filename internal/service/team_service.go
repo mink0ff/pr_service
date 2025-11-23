@@ -10,16 +10,16 @@ import (
 	"github.com/mink0ff/pr_service/internal/repository"
 )
 
-type TeamService struct {
+type TeamServiceImpl struct {
 	teamRepo repository.TeamRepository
 	userRepo repository.UserRepository
 }
 
-func NewTeamService(teamRepo repository.TeamRepository, userRepo repository.UserRepository) *TeamService {
-	return &TeamService{teamRepo: teamRepo, userRepo: userRepo}
+func NewTeamService(teamRepo repository.TeamRepository, userRepo repository.UserRepository) TeamService {
+	return &TeamServiceImpl{teamRepo: teamRepo, userRepo: userRepo}
 }
 
-func (s *TeamService) CreateTeam(ctx context.Context, req *dto.CreateTeamRequest) (*dto.CreateTeamResponse, error) {
+func (s *TeamServiceImpl) CreateTeam(ctx context.Context, req *dto.CreateTeamRequest) (*dto.CreateTeamResponse, error) {
 	existingTeam, err := s.teamRepo.GetByName(ctx, req.TeamName)
 	if err != nil {
 		log.Printf("team repo error: %v", err)
@@ -81,7 +81,7 @@ func (s *TeamService) CreateTeam(ctx context.Context, req *dto.CreateTeamRequest
 	return resp, nil
 }
 
-func (s *TeamService) GetTeam(ctx context.Context, teamName string) (*dto.Team, error) {
+func (s *TeamServiceImpl) GetTeam(ctx context.Context, teamName string) (*dto.Team, error) {
 	team, err := s.teamRepo.GetByName(ctx, teamName)
 	if err != nil || team == nil {
 		return nil, ErrTeamNotFound

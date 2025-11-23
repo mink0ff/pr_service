@@ -16,15 +16,18 @@ import (
 	_ "gorm.io/gorm"
 )
 
-type PRService struct {
+type PRServiceImpl struct {
 	txManager *repository.TransactionManager
 	prRepo    repository.PullRequestRepository
 	userRepo  repository.UserRepository
 	teamRepo  repository.TeamRepository
 }
 
-func NewPRService(txManager *repository.TransactionManager, prRepo repository.PullRequestRepository, userRepo repository.UserRepository, teamRepo repository.TeamRepository) *PRService {
-	return &PRService{
+func NewPRService(txManager *repository.TransactionManager,
+	prRepo repository.PullRequestRepository,
+	userRepo repository.UserRepository,
+	teamRepo repository.TeamRepository) PRService {
+	return &PRServiceImpl{
 		txManager: txManager,
 		prRepo:    prRepo,
 		userRepo:  userRepo,
@@ -32,7 +35,7 @@ func NewPRService(txManager *repository.TransactionManager, prRepo repository.Pu
 	}
 }
 
-func (s *PRService) CreatePR(ctx context.Context, req *dto.CreatePRRequest) (*dto.CreatePRResponse, error) {
+func (s *PRServiceImpl) CreatePR(ctx context.Context, req *dto.CreatePRRequest) (*dto.CreatePRResponse, error) {
 	var resp *dto.CreatePRResponse
 
 	err := s.txManager.Do(ctx, func(txCtx context.Context, tx *gorm.DB) error {
@@ -76,7 +79,7 @@ func (s *PRService) CreatePR(ctx context.Context, req *dto.CreatePRRequest) (*dt
 	return resp, nil
 }
 
-func (s *PRService) MergePR(ctx context.Context, req *dto.MergePRRequest) (*dto.MergePRResponse, error) {
+func (s *PRServiceImpl) MergePR(ctx context.Context, req *dto.MergePRRequest) (*dto.MergePRResponse, error) {
 	pr, err := s.prRepo.GetByID(ctx, req.PullRequestID)
 	if err != nil || pr == nil {
 		return nil, ErrPRNotFound
@@ -109,7 +112,7 @@ func (s *PRService) MergePR(ctx context.Context, req *dto.MergePRRequest) (*dto.
 	}, nil
 }
 
-func (s *PRService) ReassignReviewer(ctx context.Context, req *dto.ReassignReviewerRequest) (*dto.ReassignReviewerResponse, error) {
+func (s *PRServiceImpl) ReassignReviewer(ctx context.Context, req *dto.ReassignReviewerRequest) (*dto.ReassignReviewerResponse, error) {
 	var resp *dto.ReassignReviewerResponse
 
 	err := s.txManager.Do(ctx, func(txCtx context.Context, tx *gorm.DB) error {
@@ -169,7 +172,7 @@ func mapPullRequestToDTO(pr *models.PullRequest, reviewers []models.User) dto.Pu
 	}
 }
 
-func (s *PRService) createPullRequest(ctx context.Context, req *dto.CreatePRRequest, prRepo repository.PullRequestRepository) (*models.PullRequest, error) {
+func (s *PRServiceImpl) createPullRequest(ctx context.Context, req *dto.CreatePRRequest, prRepo repository.PullRequestRepository) (*models.PullRequest, error) {
 	existing, err := prRepo.GetByID(ctx, req.PullRequestID)
 	if err != nil {
 		return nil, err
@@ -198,7 +201,7 @@ func (s *PRService) createPullRequest(ctx context.Context, req *dto.CreatePRRequ
 	return &pr, nil
 }
 
-func (s *PRService) getAuthorWithTeamLock(ctx context.Context, authorID string, userRepo repository.UserRepository) (*models.User, error) {
+func (s *PRServiceImpl) getAuthorWithTeamLock(ctx context.Context, authorID string, userRepo repository.UserRepository) (*models.User, error) {
 	author, err := userRepo.GetByID(ctx, authorID)
 	if err != nil || author == nil {
 		return nil, ErrUserNotFound
@@ -212,7 +215,7 @@ func (s *PRService) getAuthorWithTeamLock(ctx context.Context, authorID string, 
 	return author, nil
 }
 
-func (s *PRService) selectReviewers(ctx context.Context, authorID string, teamID uuid.UUID, userRepo repository.UserRepository) []string {
+func (s *PRServiceImpl) selectReviewers(ctx context.Context, authorID string, teamID uuid.UUID, userRepo repository.UserRepository) []string {
 	users, _ := userRepo.ListActiveByTeam(ctx, teamID)
 
 	candidates := make([]string, 0, len(users))
@@ -247,7 +250,7 @@ func (s *PRService) selectReviewers(ctx context.Context, authorID string, teamID
 	return selected
 }
 
-func (s *PRService) assignReviewers(ctx context.Context, prID string, reviewers []string, prRepo repository.PullRequestRepository) error {
+func (s *PRServiceImpl) assignReviewers(ctx context.Context, prID string, reviewers []string, prRepo repository.PullRequestRepository) error {
 	for _, r := range reviewers {
 		if err := prRepo.AddReviewer(ctx, prID, r); err != nil {
 			log.Printf("failed to add reviewer %s: %v", r, err)
@@ -257,7 +260,7 @@ func (s *PRService) assignReviewers(ctx context.Context, prID string, reviewers 
 	return nil
 }
 
-func (s *PRService) getPRForReassign(ctx context.Context, prID string, prRepo repository.PullRequestRepository) (*models.PullRequest, error) {
+func (s *PRServiceImpl) getPRForReassign(ctx context.Context, prID string, prRepo repository.PullRequestRepository) (*models.PullRequest, error) {
 	pr, err := prRepo.GetByID(ctx, prID)
 	if err != nil || pr == nil {
 		return nil, ErrPRNotFound
@@ -270,7 +273,7 @@ func (s *PRService) getPRForReassign(ctx context.Context, prID string, prRepo re
 	return pr, nil
 }
 
-func (s *PRService) getOldReviewer(
+func (s *PRServiceImpl) getOldReviewer(
 	ctx context.Context,
 	prID string,
 	oldUserID string,
@@ -297,7 +300,7 @@ func (s *PRService) getOldReviewer(
 	return reviewers, oldReviewer, nil
 }
 
-func (s *PRService) pickNewReviewer(
+func (s *PRServiceImpl) pickNewReviewer(
 	ctx context.Context,
 	reviewers []models.User,
 	teamID uuid.UUID,
@@ -337,7 +340,7 @@ func (s *PRService) pickNewReviewer(
 	return candidates[rand.Intn(len(candidates))], nil
 }
 
-func (s *PRService) updateReviewers(
+func (s *PRServiceImpl) updateReviewers(
 	ctx context.Context,
 	prID string,
 	oldUserID string,

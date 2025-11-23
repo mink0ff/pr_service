@@ -9,14 +9,13 @@ import (
 )
 
 type UserHandler struct {
-	userService *service.UserService
+	userService service.UserService
 }
 
-func NewUserHandler(userService *service.UserService) *UserHandler {
+func NewUserHandler(userService service.UserService) *UserHandler {
 	return &UserHandler{userService: userService}
 }
 
-// POST /users/setIsActive
 func (h *UserHandler) SetActive(w http.ResponseWriter, r *http.Request) {
 	var req dto.SetUserActiveRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -34,7 +33,6 @@ func (h *UserHandler) SetActive(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{"user": user})
 }
 
-// GET /users/getReview?user_id=xxx
 func (h *UserHandler) GetReviewPRs(w http.ResponseWriter, r *http.Request) {
 	userID := r.URL.Query().Get("user_id")
 	if userID == "" {

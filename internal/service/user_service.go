@@ -9,15 +9,16 @@ import (
 	"github.com/mink0ff/pr_service/internal/repository"
 )
 
-type UserService struct {
+type UserServiceImpl struct {
 	userRepo repository.UserRepository
+	teamRepo repository.TeamRepository
 }
 
-func NewUserService(repo repository.UserRepository) *UserService {
-	return &UserService{userRepo: repo}
+func NewUserService(userRepo repository.UserRepository, teamRepo repository.TeamRepository) UserService {
+	return &UserServiceImpl{userRepo: userRepo, teamRepo: teamRepo}
 }
 
-func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest) (*models.User, error) {
+func (s *UserServiceImpl) CreateUser(ctx context.Context, req *dto.CreateUserRequest) (*dto.User, error) {
 	user := models.User{
 		UserID:   req.UserID,
 		Username: req.Name,
@@ -32,25 +33,58 @@ func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest
 		return nil, ErrUserExists
 	}
 
-	return &user, nil
+	team, err := s.teamRepo.GetByID(ctx, user.TeamID)
+
+	if err != nil {
+		log.Printf("team get error: %v", err)
+		return nil, ErrTeamNotFound
+	}
+
+	dtoUser := dto.User{
+		UserID:   user.UserID,
+		Username: user.Username,
+		TeamName: team.TeamName,
+		IsActive: user.IsActive,
+	}
+
+	return &dtoUser, nil
 }
 
-func (s *UserService) SetActive(ctx context.Context, req dto.SetUserActiveRequest) (*models.User, error) {
+func (s *UserServiceImpl) SetActive(ctx context.Context, req dto.SetUserActiveRequest) (*dto.User, error) {
 	user, err := s.userRepo.GetByID(ctx, req.UserID)
 	if err != nil || user == nil {
 		log.Printf("user not found: %v", req.UserID)
 		return nil, ErrUserNotFound
 	}
 
-	user.IsActive = req.IsActive
+	userUpdate := models.User{
+		UserID:   user.UserID,
+		Username: user.Username,
+		TeamID:   user.TeamID,
+		IsActive: req.IsActive,
+	}
 
-	if err := s.userRepo.Update(ctx, *user); err != nil {
+	if err := s.userRepo.Update(ctx, userUpdate); err != nil {
 		return nil, err
 	}
 
-	return user, nil
+	team, err := s.teamRepo.GetByID(ctx, user.TeamID)
+
+	if err != nil {
+		log.Printf("team get error: %v", err)
+		return nil, ErrTeamNotFound
+	}
+
+	userDto := dto.User{
+		UserID:   userUpdate.UserID,
+		Username: userUpdate.Username,
+		TeamName: team.TeamName,
+		IsActive: userUpdate.IsActive,
+	}
+
+	return &userDto, nil
 }
 
-func (s *UserService) GetReviewPRs(ctx context.Context, userID string) ([]models.PullRequest, error) {
+func (s *UserServiceImpl) GetReviewPRs(ctx context.Context, userID string) ([]models.PullRequest, error) {
 	return s.userRepo.ListReviewPRs(ctx, userID)
 }
