@@ -23,3 +23,7 @@ type PRService interface {
 	ReassignReviewer(ctx context.Context, req *dto.ReassignReviewerRequest) (*dto.ReassignReviewerResponse, error)
 	MergePR(ctx context.Context, req *dto.MergePRRequest) (*dto.MergePRResponse, error)
 }
+
+type StatsService interface {
+	GetReviewerStats(ctx context.Context) (*dto.ReviewerStatsResponse, error)
+}
