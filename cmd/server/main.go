@@ -37,7 +37,7 @@ func main() {
 	txManager := transaction.NewTransactionManager(db)
 
 	userService := service.NewUserService(userRepo, teamRepo)
-	teamService := service.NewTeamService(teamRepo, userRepo, txManager)
+	teamService := service.NewTeamService(teamRepo, userRepo, prRepo, txManager)
 	prService := service.NewPRService(prRepo, userRepo, teamRepo, reviewerHistoryPero, txManager)
 	statsService := service.NewStatsService(reviewerHistoryPero)
 

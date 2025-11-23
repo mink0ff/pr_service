@@ -9,6 +9,7 @@ func RegisterRoutes(r chi.Router, ts service.TeamService, us service.UserService
 	teamHandler := NewTeamHandler(ts)
 	r.Post("/team/add", teamHandler.CreateTeam)
 	r.Get("/team/get", teamHandler.GetTeam)
+	r.Post("/team/deactivate_users", teamHandler.DeactivateTeamUsersHandler)
 
 	userHandler := NewUserHandler(us)
 	r.Post("/users/setIsActive", userHandler.SetActive)

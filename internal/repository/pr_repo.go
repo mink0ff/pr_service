@@ -75,3 +75,9 @@ func (r *PrRepo) ListByReviewer(ctx context.Context, reviewerID string) ([]model
 func (r *PrRepo) WithTx(tx *gorm.DB) PullRequestRepository {
 	return &PrRepo{db: tx}
 }
+
+func (r *PrRepo) RemoveReviewerFromAllPRs(ctx context.Context, userID string) error {
+	return r.db.WithContext(ctx).
+		Where("reviewer_id = ?", userID).
+		Delete(&models.PRReviewer{}).Error
+}

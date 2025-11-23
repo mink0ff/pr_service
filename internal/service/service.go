@@ -16,6 +16,7 @@ type UserService interface {
 type TeamService interface {
 	CreateTeam(ctx context.Context, req *dto.CreateTeamRequest) (*dto.CreateTeamResponse, error)
 	GetTeam(ctx context.Context, teamName string) (*dto.Team, error)
+	DeactivateTeamUsers(ctx context.Context, req *dto.DeactivateTeamUsersRequest) (*dto.DeactivateTeamUsersResponse, error)
 }
 
 type PRService interface {

@@ -15,11 +15,12 @@ import (
 type TeamServiceImpl struct {
 	teamRepo  repository.TeamRepository
 	userRepo  repository.UserRepository
+	prRepo    repository.PullRequestRepository
 	txManager *transaction.Manager
 }
 
-func NewTeamService(teamRepo repository.TeamRepository, userRepo repository.UserRepository, manager *transaction.Manager) TeamService {
-	return &TeamServiceImpl{teamRepo: teamRepo, userRepo: userRepo, txManager: manager}
+func NewTeamService(teamRepo repository.TeamRepository, userRepo repository.UserRepository, prRepo repository.PullRequestRepository, manager *transaction.Manager) TeamService {
+	return &TeamServiceImpl{teamRepo: teamRepo, userRepo: userRepo, prRepo: prRepo, txManager: manager}
 }
 
 func (s *TeamServiceImpl) CreateTeam(ctx context.Context, req *dto.CreateTeamRequest) (*dto.CreateTeamResponse, error) {
@@ -139,4 +140,50 @@ func (s *TeamServiceImpl) createOrUpdateMembers(
 	}
 
 	return nil
+}
+
+func (s *TeamServiceImpl) DeactivateTeamUsers(ctx context.Context, req *dto.DeactivateTeamUsersRequest) (*dto.DeactivateTeamUsersResponse, error) {
+	var resp *dto.DeactivateTeamUsersResponse
+
+	err := s.txManager.Do(ctx, func(txCtx context.Context, tx *gorm.DB) error {
+		txUserRepo := s.userRepo.WithTx(tx)
+		txPrRepo := s.prRepo.WithTx(tx)
+
+		team, err := s.teamRepo.GetByName(txCtx, req.TeamName)
+		if err != nil {
+			return err
+		}
+		if team == nil {
+			return ErrTeamNotFound
+		}
+
+		users, err := txUserRepo.ListActiveByTeam(txCtx, team.TeamID)
+		if err != nil {
+			return err
+		}
+
+		for _, u := range users {
+			u.IsActive = false
+			if err := txUserRepo.Update(txCtx, u); err != nil {
+				return err
+			}
+
+			if err := txPrRepo.RemoveReviewerFromAllPRs(txCtx, u.UserID); err != nil {
+				return err
+			}
+		}
+
+		resp = &dto.DeactivateTeamUsersResponse{
+			TeamName:         req.TeamName,
+			DeactivatedCount: len(users),
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }

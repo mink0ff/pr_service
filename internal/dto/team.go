@@ -16,3 +16,12 @@ type CreateTeamRequest = Team
 type CreateTeamResponse struct {
 	Team Team `json:"team"`
 }
+
+type DeactivateTeamUsersRequest struct {
+	TeamName string `json:"team_name"`
+}
+
+type DeactivateTeamUsersResponse struct {
+	TeamName         string `json:"team_name"`
+	DeactivatedCount int    `json:"deactivated_count"`
+}
