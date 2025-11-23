@@ -3,26 +3,27 @@ package main
 import (
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/mink0ff/pr_service/internal/config"
 	"github.com/mink0ff/pr_service/internal/handler"
 	"github.com/mink0ff/pr_service/internal/repository"
-	"github.com/mink0ff/pr_service/internal/repository/gorm"
+	"github.com/mink0ff/pr_service/internal/repository/gormdb"
 	"github.com/mink0ff/pr_service/internal/repository/migrate"
 	"github.com/mink0ff/pr_service/internal/repository/transaction"
 	"github.com/mink0ff/pr_service/internal/service"
 )
 
 func main() {
-	cfg := &gorm.GormConfig{
-		DSN:             "postgres://postgres:postgres@localhost:5432/pr_service?sslmode=disable",
-		MaxOpenConns:    10,
-		MaxIdleConns:    5,
-		ConnMaxLifetime: time.Minute * 5,
-	}
+	cfg := config.LoadDBConfig(".env")
 
-	db, err := gorm.NewGormDB(cfg)
+	db, err := gormdb.NewGormDB(&gormdb.GormConfig{
+		DSN:             cfg.DSN,
+		MaxOpenConns:    cfg.MaxOpenConns,
+		MaxIdleConns:    cfg.MaxIdleConns,
+		ConnMaxLifetime: cfg.ConnMaxLife,
+	})
+
 	if err != nil {
 		log.Fatalf("failed to connect to DB: %v", err)
 	}
