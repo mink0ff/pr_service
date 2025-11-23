@@ -13,7 +13,7 @@ type PrRepo struct {
 	db *gorm.DB
 }
 
-func NewPrRepo(db *gorm.DB) *PrRepo {
+func NewPrRepo(db *gorm.DB) PullRequestRepository {
 	return &PrRepo{db: db}
 }
 
